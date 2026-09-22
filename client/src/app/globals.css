@@ -7,9 +7,6 @@
   --color-border: #e5e4e7;
   --color-code-bg: #f4f3ec;
   --color-accent: #aa3bff;
-  --color-social-bg: rgba(244, 243, 236, 0.5);
-  --shadow-card:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, Consolas, monospace;
@@ -23,9 +20,6 @@
     --color-border: #2e303a;
     --color-code-bg: #1f2028;
     --color-accent: #c084fc;
-    --color-social-bg: rgba(47, 48, 58, 0.5);
-    --shadow-card:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
 }
 
