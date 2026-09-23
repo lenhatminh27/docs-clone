@@ -9,31 +9,43 @@ Hướng dẫn cho AI coding agent làm việc trên dự án **Docs Clone** (re
 ## Stack kỹ thuật
 
 - **Runtime**: Node.js
-- **Backend**: Express (hoặc Fastify) + TypeScript
+- **Backend**: NestJS + TypeScript (module/DI pattern, khớp kiến trúc module bên client)
 - **Database**: PostgreSQL — dùng `JSONB` cho document content, `NUMERIC` cho mọi giá trị tiền tệ nếu có
-- **DB access**: Knex.js hoặc Drizzle ORM — migration bắt buộc phải qua tool, không sửa schema tay
+- **DB access**: Drizzle ORM — migration bắt buộc phải qua `drizzle-kit`, không sửa schema tay
+- **Cache/ephemeral store**: Redis — verification code (email verify/reset password) lưu ở đây với TTL, không lưu bảng riêng trong Postgres (tự hết hạn, không cần cron dọn dẹp)
 - **Real-time sync**: Yjs (CRDT) + y-websocket
 - **Editor**: Tiptap (ProseMirror) + `@tiptap/extension-collaboration`
-- **Frontend**: React (Vite hoặc Next.js)
-- **Auth**: JWT
+- **Frontend**: React (Vite hoặc Next.js) — đã chốt Next.js App Router
+- **Auth**: JWT access token (15 phút) + refresh token opaque lưu Postgres (rotation + reuse detection + grace period), xem chi tiết trong `server/src/auth/`
 
 ## Cấu trúc thư mục (dự kiến)
 
 ```
-/server
+/server (NestJS)
   /src
-    /routes        # API endpoints
+    main.ts, app.module.ts
     /db
-      /migrations   # Knex/Drizzle migration files
-      /seeds
-    /websocket      # y-websocket server, presence handling
-    /services       # business logic (document, permission, version)
+      drizzle.module.ts   # provider DRIZZLE qua DI
+      /schema             # Drizzle schema — nguồn sự thật cho migration
+      /migrations          # SQL sinh bởi drizzle-kit, không sửa tay
+    /redis
+      redis.module.ts     # provider REDIS qua DI (verification code, sau này presence/pub-sub)
+    /<domain>             # 1 module NestJS / domain (users, auth, document, ...)
+      <domain>.module.ts
+      <domain>.controller.ts
+      <domain>.service.ts       # business logic — KHÔNG tự query Drizzle/Redis trực tiếp
+      <domain>.repository.ts    # duy nhất nơi query 1 bảng/store cụ thể; nhận `tx` optional
+                                 #   để Service mở transaction xuyên nhiều Repository khi cần
   package.json
-/client
+/client (Next.js App Router)
   /src
-    /components     # React components (Editor, Toolbar, PresenceList...)
-    /hooks
-    /api            # API client calls
+    /app            # routes (layout, page, route handlers)
+    /modules        # kiến trúc module — chia theo domain, không theo loại file
+      /editor       # vd: components/hooks/api riêng cho rich text editor (Tiptap)
+      /document     # (tương tự khi implement: CRUD, danh sách document)
+      /presence     # (tương tự khi implement: ai đang xem/gõ)
+      ...           # mỗi module tự chứa /components, /hooks, /api riêng, không import chéo qua nội bộ module khác — chỉ export qua điểm vào công khai của module
+    /shared         # component/hook/lib dùng chung giữa nhiều module (Button, useDebounce, formatDate...)
   package.json
 AGENTS.md
 ```
@@ -64,10 +76,12 @@ Dự án dùng **pnpm**, không dùng npm hoặc yarn. Luôn cài dependency b�
 ```bash
 # Backend
 cd server
-pnpm dev                 # chạy dev server
-pnpm migrate             # chạy migration
-pnpm migrate:rollback    # rollback migration gần nhất
-pnpm test                # chạy test
+docker compose up -d     # Postgres + Redis cho local dev
+pnpm start:dev           # chạy dev server (watch mode)
+pnpm db:generate         # sinh migration SQL từ thay đổi schema (Drizzle)
+pnpm db:migrate          # áp dụng migration lên DB — Drizzle không có "rollback" như Knex,
+                          #   muốn revert phải viết migration mới đảo ngược thay đổi
+pnpm test                # chạy test (Vitest)
 
 # Frontend
 cd client
