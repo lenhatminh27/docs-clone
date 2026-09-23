@@ -1,0 +1,9 @@
+{
+  "$schema": "https://oxc.rs/schema/oxlint.json",
+  "rules": {
+    "typescript/no-floating-promises": "error"
+  },
+  "env": {
+    "node": true
+  }
+}
