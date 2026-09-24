@@ -16,26 +16,22 @@ Hướng dẫn cho AI coding agent làm việc trên dự án **Docs Clone** (re
 - **Real-time sync**: Yjs (CRDT) + y-websocket
 - **Editor**: Tiptap (ProseMirror) + `@tiptap/extension-collaboration`
 - **Frontend**: React (Vite hoặc Next.js) — đã chốt Next.js App Router
-- **Auth**: JWT access token (15 phút) + refresh token opaque lưu Postgres (rotation + reuse detection + grace period), xem chi tiết trong `server/src/auth/`
+- **Auth**: JWT — **chưa có gì trong code, kể cả schema** (`server/` hiện là scaffold NestJS trần, đã revert code Auth từng viết trước đó). Đang ở giai đoạn thiết kế DB thuần (thảo luận, chưa viết file) — thiết kế đã bàn trước đó (access token ngắn hạn + refresh token opaque rotation/reuse-detection/grace-period, rate-limit login) chỉ là tham khảo, cần thống nhất lại trước khi viết bất kỳ file nào
 
 ## Cấu trúc thư mục (dự kiến)
 
 ```
-/server (NestJS)
+/server (NestJS — hiện là scaffold trần, chưa có domain nào)
   /src
-    main.ts, app.module.ts
-    /db
-      drizzle.module.ts   # provider DRIZZLE qua DI
-      /schema             # Drizzle schema — nguồn sự thật cho migration
-      /migrations          # SQL sinh bởi drizzle-kit, không sửa tay
-    /redis
-      redis.module.ts     # provider REDIS qua DI (verification code, sau này presence/pub-sub)
-    /<domain>             # 1 module NestJS / domain (users, auth, document, ...)
-      <domain>.module.ts
-      <domain>.controller.ts
-      <domain>.service.ts       # business logic — KHÔNG tự query Drizzle/Redis trực tiếp
-      <domain>.repository.ts    # duy nhất nơi query 1 bảng/store cụ thể; nhận `tx` optional
-                                 #   để Service mở transaction xuyên nhiều Repository khi cần
+    main.ts, app.module.ts, app.controller.ts, app.service.ts
+    # Khi bắt đầu code lại (sau khi DB đã thiết kế xong):
+    #   /db/schema, /db/migrations   — Drizzle schema + migration sinh bởi drizzle-kit
+    #   /redis                       — provider REDIS qua DI
+    #   /<domain>                    — 1 module NestJS / domain (users, auth, document...)
+    #     <domain>.module.ts / .controller.ts
+    #     <domain>.service.ts       # business logic — KHÔNG tự query Drizzle/Redis trực tiếp
+    #     <domain>.repository.ts    # duy nhất nơi query 1 bảng/store; nhận `tx` optional để
+    #                                 Service mở transaction xuyên nhiều Repository khi cần
   package.json
 /client (Next.js App Router)
   /src
@@ -74,13 +70,9 @@ Dự án dùng **pnpm**, không dùng npm hoặc yarn. Luôn cài dependency b�
 ## Lệnh thường dùng
 
 ```bash
-# Backend
+# Backend (hiện chỉ có scaffold trần, chưa có docker-compose/DB — sẽ thêm lại khi bắt đầu code)
 cd server
-docker compose up -d     # Postgres + Redis cho local dev
 pnpm start:dev           # chạy dev server (watch mode)
-pnpm db:generate         # sinh migration SQL từ thay đổi schema (Drizzle)
-pnpm db:migrate          # áp dụng migration lên DB — Drizzle không có "rollback" như Knex,
-                          #   muốn revert phải viết migration mới đảo ngược thay đổi
 pnpm test                # chạy test (Vitest)
 
 # Frontend
